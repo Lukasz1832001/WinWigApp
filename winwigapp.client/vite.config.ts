@@ -1,7 +1,40 @@
 import { defineConfig } from 'vite'
+import path from 'path'
+import tailwindcss from '@tailwindcss/vite'
 import react from '@vitejs/plugin-react'
 
-// https://vite.dev/config/
+function figmaAssetResolver() {
+    return {
+        name: 'figma-asset-resolver',
+        resolveId(id) {
+            if (id.startsWith('figma:asset/')) {
+                const filename = id.replace('figma:asset/', '')
+                return path.resolve(__dirname, 'src/assets', filename)
+            }
+        },
+    }
+}
+
 export default defineConfig({
-  plugins: [react()],
+    plugins: [
+        figmaAssetResolver(),
+        react(),
+        tailwindcss(),
+    ],
+    resolve: {
+        alias: {
+            '@': path.resolve(__dirname, './src'),
+        },
+    },
+    server: {
+        port: 5173, // Standardowy port Vite
+        proxy: {
+            // Przekierowuje zapytania /api na port Twojego backendu ASP.NET
+            '^/api': {
+                target: 'https://localhost:7054',
+                secure: false
+            }
+        }
+    },
+    assetsInclude: ['**/*.svg', '**/*.csv'],
 })
