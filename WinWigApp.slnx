@@ -1,0 +1,7 @@
+<Solution>
+  <Project Path="winwigapp.client/winwigapp.client.esproj">
+    <Build />
+    <Deploy />
+  </Project>
+  <Project Path="WinWigApp.Server/WinWigApp.Server.csproj" />
+</Solution>
