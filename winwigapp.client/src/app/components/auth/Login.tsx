@@ -7,25 +7,35 @@ export function Login() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
+    setIsLoading(true);
 
-    // Mock authentication - replace with API call to ASP.NET backend
-    if (email && password) {
-      // TODO: Replace with actual API call
-      // const response = await fetch('/api/auth/login', {
-      //   method: 'POST',
-      //   headers: { 'Content-Type': 'application/json' },
-      //   body: JSON.stringify({ email, password })
-      // });
+    try {
+      const response = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password })
+      });
 
-      localStorage.setItem("token", "mock-token");
-      localStorage.setItem("user", JSON.stringify({ email, balance: 100000 }));
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Logowanie nie powiodło się');
+      }
+
+      const data = await response.json();
+      
+      localStorage.setItem("token", data.token);
+      localStorage.setItem("user", JSON.stringify(data.user));
+      
       navigate("/");
-    } else {
-      setError("Proszę wypełnić wszystkie pola");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Błąd podczas logowania");
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -65,6 +75,7 @@ export function Login() {
                 className="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500"
                 placeholder="twoj@email.com"
                 required
+                disabled={isLoading}
               />
             </div>
 
@@ -80,14 +91,16 @@ export function Login() {
                 className="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500"
                 placeholder="••••••••"
                 required
+                disabled={isLoading}
               />
             </div>
 
             <button
               type="submit"
-              className="w-full bg-emerald-500 hover:bg-emerald-600 text-white font-medium py-3 px-4 rounded-lg transition-colors"
+              disabled={isLoading}
+              className="w-full bg-emerald-500 hover:bg-emerald-600 disabled:bg-emerald-700 disabled:cursor-not-allowed text-white font-medium py-3 px-4 rounded-lg transition-colors"
             >
-              Zaloguj się
+              {isLoading ? "Logowanie..." : "Zaloguj się"}
             </button>
           </form>
 
@@ -108,3 +121,4 @@ export function Login() {
     </div>
   );
 }
+

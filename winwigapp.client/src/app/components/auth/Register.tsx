@@ -12,6 +12,7 @@ export function Register() {
     confirmPassword: "",
   });
   const [error, setError] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -27,33 +28,35 @@ export function Register() {
       return;
     }
 
-    // Mock registration - replace with API call to ASP.NET backend
-    if (formData.email && formData.password && formData.firstName && formData.lastName) {
-      // TODO: Replace with actual API call
-      // const response = await fetch('/api/auth/register', {
-      //   method: 'POST',
-      //   headers: { 'Content-Type': 'application/json' },
-      //   body: JSON.stringify({
-      //     firstName: formData.firstName,
-      //     lastName: formData.lastName,
-      //     email: formData.email,
-      //     password: formData.password
-      //   })
-      // });
+    setIsLoading(true);
 
-      localStorage.setItem("token", "mock-token");
-      localStorage.setItem(
-        "user",
-        JSON.stringify({
-          email: formData.email,
+    try {
+      const response = await fetch('/api/auth/register', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
           firstName: formData.firstName,
           lastName: formData.lastName,
-          balance: 100000,
+          email: formData.email,
+          password: formData.password
         })
-      );
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Rejestracja nie powiodła się');
+      }
+
+      const data = await response.json();
+      
+      localStorage.setItem("token", data.token);
+      localStorage.setItem("user", JSON.stringify(data.user));
+      
       navigate("/");
-    } else {
-      setError("Proszę wypełnić wszystkie pola");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Błąd podczas rejestracji");
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -102,6 +105,7 @@ export function Register() {
                   className="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500"
                   placeholder="Jan"
                   required
+                  disabled={isLoading}
                 />
               </div>
 
@@ -118,6 +122,7 @@ export function Register() {
                   className="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500"
                   placeholder="Kowalski"
                   required
+                  disabled={isLoading}
                 />
               </div>
             </div>
@@ -135,6 +140,7 @@ export function Register() {
                 className="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500"
                 placeholder="twoj@email.com"
                 required
+                disabled={isLoading}
               />
             </div>
 
@@ -151,6 +157,7 @@ export function Register() {
                 className="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500"
                 placeholder="••••••••"
                 required
+                disabled={isLoading}
               />
             </div>
 
@@ -167,14 +174,16 @@ export function Register() {
                 className="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500"
                 placeholder="••••••••"
                 required
+                disabled={isLoading}
               />
             </div>
 
             <button
               type="submit"
-              className="w-full bg-emerald-500 hover:bg-emerald-600 text-white font-medium py-3 px-4 rounded-lg transition-colors"
+              disabled={isLoading}
+              className="w-full bg-emerald-500 hover:bg-emerald-600 disabled:bg-emerald-700 disabled:cursor-not-allowed text-white font-medium py-3 px-4 rounded-lg transition-colors"
             >
-              Zarejestruj się
+              {isLoading ? "Rejestrowanie..." : "Zarejestruj się"}
             </button>
           </form>
 
@@ -195,3 +204,4 @@ export function Register() {
     </div>
   );
 }
+

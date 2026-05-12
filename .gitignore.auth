@@ -1,0 +1,48 @@
+# WinWigApp .gitignore additions
+
+# SQLite Database
+*.db
+*.db-shm
+*.db-wal
+WinWigApp.db
+
+# Sensitive Files
+appsettings.Production.json
+.env
+.env.local
+.env.*.local
+
+# .NET
+bin/
+obj/
+.vs/
+.vscode/
+
+# Node/Frontend
+node_modules/
+dist/
+build/
+.next/
+
+# IDE
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Logs
+logs/
+*.log
+
+# User-specific files
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+
+# Local user settings
+*.local.json
+
+# Authentication tokens (for testing)
+test-tokens.txt
+debug-tokens.log
