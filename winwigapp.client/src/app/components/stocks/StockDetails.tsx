@@ -1,6 +1,7 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useParams, useNavigate, Link } from "react-router";
-import { WIG20_STOCKS, generateCandlestickData, calculateTechnicalIndicators } from "../../data/mockData";
+import { Stock } from "../../data/mockData";
+import { authFetch } from "../../utils/authHelper";
 import {
   ArrowLeft,
   TrendingUp,
@@ -31,18 +32,63 @@ export function StockDetails() {
   const [showBuyModal, setShowBuyModal] = useState(false);
   const [activeTab, setActiveTab] = useState<"chart" | "technical">("chart");
 
-  const stock = WIG20_STOCKS.find((s) => s.symbol === symbol);
+  const [stock, setStock] = useState<Stock | null>(null);
+  const [candleData, setCandleData] = useState<any[]>([]);
+  const [technicalIndicators, setTechnicalIndicators] = useState<any | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  const candleData = useMemo(() => {
-    if (!stock) return [];
-    const days = selectedInterval === "1D" ? 1 : selectedInterval === "1W" ? 7 : selectedInterval === "1M" ? 30 : selectedInterval === "3M" ? 90 : 252;
-    return generateCandlestickData(stock.currentPrice, days);
+  useEffect(() => {
+    let mounted = true;
+    const loadStock = async () => {
+      try {
+        const res = await fetch('/api/stocks');
+        if (!res.ok) throw new Error('Nie udało się pobrać danych spółek');
+        const data: Stock[] = await res.json();
+        if (!mounted) return;
+        const found = data.find((s) => s.symbol === symbol);
+        setStock(found ?? null);
+      } catch (err) {
+        console.error(err);
+        setError(err instanceof Error ? err.message : String(err));
+      }
+    };
+
+    loadStock();
+    return () => { mounted = false; };
+  }, [symbol]);
+
+  useEffect(() => {
+    if (!stock) return;
+    let mounted = true;
+    const loadData = async () => {
+      setLoading(true);
+      setError(null);
+      try {
+        const days = selectedInterval === "1D" ? 1 : selectedInterval === "1W" ? 7 : selectedInterval === "1M" ? 30 : selectedInterval === "3M" ? 90 : 252;
+
+        const candRes = await fetch(`/api/stocks/${stock.symbol}/candlestick?days=${days}`);
+        if (!candRes.ok) throw new Error('Nie udało się pobrać danych świecowych');
+        const candles = await candRes.json();
+
+        const techRes = await fetch(`/api/stocks/${stock.symbol}/technical?days=${days}`);
+        if (!techRes.ok) throw new Error('Nie udało się pobrać wskaźników technicznych');
+        const tech = await techRes.json();
+
+        if (!mounted) return;
+        setCandleData(candles);
+        setTechnicalIndicators(tech);
+      } catch (err) {
+        console.error(err);
+        setError(err instanceof Error ? err.message : String(err));
+      } finally {
+        if (mounted) setLoading(false);
+      }
+    };
+
+    loadData();
+    return () => { mounted = false; };
   }, [stock, selectedInterval]);
-
-  const technicalIndicators = useMemo(() => {
-    if (candleData.length === 0) return null;
-    return calculateTechnicalIndicators(candleData);
-  }, [candleData]);
 
   const chartData = useMemo(() => {
     return candleData.map((candle, index) => ({
