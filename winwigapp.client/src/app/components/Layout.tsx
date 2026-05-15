@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { Outlet, useNavigate, Link, useLocation } from "react-router";
 import {
   LayoutDashboard,
@@ -11,11 +11,13 @@ import {
   Menu,
   X,
 } from "lucide-react";
+import { useUser } from "../context/UserContext";
+import { useState } from "react";
 
 export function Layout() {
   const navigate = useNavigate();
   const location = useLocation();
-  const [user, setUser] = useState<any>(null);
+  const { user, setUser } = useUser();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   useEffect(() => {
@@ -24,16 +26,12 @@ export function Layout() {
       navigate("/login");
       return;
     }
-
-    const userData = localStorage.getItem("user");
-    if (userData) {
-      setUser(JSON.parse(userData));
-    }
   }, [navigate]);
 
   const handleLogout = () => {
     localStorage.removeItem("token");
     localStorage.removeItem("user");
+    setUser(null);
     navigate("/login");
   };
 
@@ -45,7 +43,18 @@ export function Layout() {
     { path: "/history", icon: History, label: "Historia" },
   ];
 
-  if (!user) return null;
+  if (!user) {
+    return (
+      <div className="min-h-screen bg-gray-950 flex items-center justify-center">
+        <div className="text-center">
+          <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-emerald-500/10 mb-4">
+            <div className="w-8 h-8 border-3 border-emerald-500 border-t-transparent rounded-full animate-spin"></div>
+          </div>
+          <p className="text-gray-400">Ładowanie...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gray-950">

@@ -18,6 +18,7 @@ builder.Services.AddDbContext<WinWigDbContext>(options =>
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<ITokenService, TokenService>();
 builder.Services.AddScoped<IStockService, StockService>();
+builder.Services.AddScoped<IWalletService, WalletService>();
 
 // Configure JWT Authentication
 var jwtSecret = builder.Configuration["Jwt:Secret"];

@@ -1,9 +1,11 @@
 import { useState } from "react";
 import { useNavigate, Link } from "react-router";
 import { LogIn } from "lucide-react";
+import { useUser } from "../../context/UserContext";
 
 export function Login() {
   const navigate = useNavigate();
+  const { setUser } = useUser();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
@@ -27,10 +29,13 @@ export function Login() {
       }
 
       const data = await response.json();
-      
+
       localStorage.setItem("token", data.token);
       localStorage.setItem("user", JSON.stringify(data.user));
-      
+
+      // Update UserContext so Layout.tsx renders immediately
+      setUser(data.user);
+
       navigate("/");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Błąd podczas logowania");

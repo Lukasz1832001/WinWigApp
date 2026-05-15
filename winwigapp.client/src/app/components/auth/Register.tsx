@@ -1,9 +1,11 @@
 import { useState } from "react";
 import { useNavigate, Link } from "react-router";
 import { UserPlus } from "lucide-react";
+import { useUser } from "../../context/UserContext";
 
 export function Register() {
   const navigate = useNavigate();
+  const { setUser } = useUser();
   const [formData, setFormData] = useState({
     firstName: "",
     lastName: "",
@@ -48,10 +50,13 @@ export function Register() {
       }
 
       const data = await response.json();
-      
+
       localStorage.setItem("token", data.token);
       localStorage.setItem("user", JSON.stringify(data.user));
-      
+
+      // Update UserContext so Layout.tsx renders immediately
+      setUser(data.user);
+
       navigate("/");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Błąd podczas rejestracji");

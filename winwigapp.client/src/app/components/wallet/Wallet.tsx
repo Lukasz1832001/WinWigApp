@@ -9,6 +9,7 @@ import {
   ArrowDownRight,
 } from "lucide-react";
 import { toast } from "sonner";
+import { useUser } from "../../context/UserContext";
 
 interface DepositTransaction {
   id: string;
@@ -18,25 +19,68 @@ interface DepositTransaction {
 }
 
 export function Wallet() {
+  const { updateBalance } = useUser();
   const [balance, setBalance] = useState(0);
   const [showDepositModal, setShowDepositModal] = useState(false);
   const [depositAmount, setDepositAmount] = useState("");
   const [paymentMethod, setPaymentMethod] = useState<"card" | "transfer" | "blik">("card");
   const [deposits, setDeposits] = useState<DepositTransaction[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
     loadWalletData();
   }, []);
 
-  const loadWalletData = () => {
-    const user = JSON.parse(localStorage.getItem("user") || "{}");
-    setBalance(user.balance || 0);
-
-    const depositsData = JSON.parse(localStorage.getItem("deposits") || "[]");
-    setDeposits(depositsData);
+  const getAuthToken = () => {
+    return localStorage.getItem("token");
   };
 
-  const handleDeposit = (e: React.FormEvent) => {
+  const loadWalletData = async () => {
+    try {
+      setIsLoading(true);
+      const token = getAuthToken();
+
+      if (!token) {
+        toast.error("Nie jesteś zalogowany");
+        return;
+      }
+
+      // Fetch balance
+      const balanceResponse = await fetch("/api/wallet/balance", {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      if (!balanceResponse.ok) {
+        throw new Error("Nie udało się pobrać salda");
+      }
+
+      const balanceData = await balanceResponse.json();
+      setBalance(balanceData.balance);
+
+      // Fetch deposits history
+      const depositsResponse = await fetch("/api/wallet/deposits", {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      if (!depositsResponse.ok) {
+        throw new Error("Nie udało się pobrać historii wpłat");
+      }
+
+      const depositsData = await depositsResponse.json();
+      setDeposits(depositsData);
+    } catch (error) {
+      console.error("Error loading wallet data:", error);
+      toast.error("Błąd podczas ładowania danych portfela");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleDeposit = async (e: React.FormEvent) => {
     e.preventDefault();
 
     const amount = parseFloat(depositAmount);
@@ -45,40 +89,57 @@ export function Wallet() {
       return;
     }
 
-    // TODO: Replace with API call to ASP.NET backend for payment processing
-    // const response = await fetch('/api/wallet/deposit', {
-    //   method: 'POST',
-    //   headers: {
-    //     'Content-Type': 'application/json',
-    //     'Authorization': `Bearer ${localStorage.getItem('token')}`
-    //   },
-    //   body: JSON.stringify({ amount, method: paymentMethod })
-    // });
+    try {
+      setIsLoading(true);
+      const token = getAuthToken();
 
-    const user = JSON.parse(localStorage.getItem("user") || "{}");
-    user.balance = (user.balance || 0) + amount;
-    localStorage.setItem("user", JSON.stringify(user));
-    setBalance(user.balance);
+      if (!token) {
+        toast.error("Nie jesteś zalogowany");
+        return;
+      }
 
-    const newDeposit: DepositTransaction = {
-      id: Date.now().toString(),
-      amount,
-      method:
-        paymentMethod === "card"
-          ? "Karta kredytowa"
-          : paymentMethod === "transfer"
-          ? "Przelew bankowy"
-          : "BLIK",
-      timestamp: new Date().toISOString(),
-    };
+      const methodMap: Record<string, string> = {
+        card: "card",
+        transfer: "transfer",
+        blik: "blik",
+      };
 
-    const updatedDeposits = [newDeposit, ...deposits];
-    setDeposits(updatedDeposits);
-    localStorage.setItem("deposits", JSON.stringify(updatedDeposits));
+      const response = await fetch("/api/wallet/deposit", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          amount,
+          method: methodMap[paymentMethod],
+        }),
+      });
 
-    toast.success(`Wpłacono ${amount.toFixed(2)} PLN`);
-    setShowDepositModal(false);
-    setDepositAmount("");
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || "Nie udało się przetworzyć wpłaty");
+      }
+
+      const depositResponse = await response.json();
+      setBalance(depositResponse.newBalance);
+
+      // Update user balance in context - this will automatically update the header
+      updateBalance(depositResponse.newBalance);
+
+      // Refresh deposits list
+      await loadWalletData();
+
+      toast.success(`Wpłacono ${amount.toFixed(2)} PLN`);
+      setShowDepositModal(false);
+      setDepositAmount("");
+    } catch (error) {
+      console.error("Deposit error:", error);
+      const errorMessage = error instanceof Error ? error.message : "Błąd podczas wpłaty";
+      toast.error(errorMessage);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const paymentMethods = [
@@ -108,7 +169,8 @@ export function Wallet() {
         </div>
         <button
           onClick={() => setShowDepositModal(true)}
-          className="flex items-center gap-2 px-6 py-3 bg-white text-emerald-600 rounded-lg hover:bg-gray-100 transition-colors font-medium"
+          disabled={isLoading}
+          className="flex items-center gap-2 px-6 py-3 bg-white text-emerald-600 rounded-lg hover:bg-gray-100 transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed"
         >
           <Plus className="w-5 h-5" />
           Wpłać środki
@@ -213,15 +275,17 @@ export function Wallet() {
                 <button
                   type="button"
                   onClick={() => setShowDepositModal(false)}
-                  className="flex-1 px-4 py-3 bg-gray-800 hover:bg-gray-700 text-white rounded-lg transition-colors font-medium"
+                  disabled={isLoading}
+                  className="flex-1 px-4 py-3 bg-gray-800 hover:bg-gray-700 text-white rounded-lg transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   Anuluj
                 </button>
                 <button
                   type="submit"
-                  className="flex-1 px-4 py-3 bg-emerald-500 hover:bg-emerald-600 text-white rounded-lg transition-colors font-medium"
+                  disabled={isLoading}
+                  className="flex-1 px-4 py-3 bg-emerald-500 hover:bg-emerald-600 text-white rounded-lg transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  Wpłać
+                  {isLoading ? "Przetwarzanie..." : "Wpłać"}
                 </button>
               </div>
             </form>
