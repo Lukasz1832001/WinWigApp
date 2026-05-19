@@ -1,6 +1,7 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
+import React from "react";
 import { Link } from "react-router";
-import { WIG20_STOCKS, Stock } from "../../data/mockData";
+import { Stock, WIG20_STOCKS } from "../../data/mockData";
 import {
   Search,
   TrendingUp,
@@ -14,14 +15,62 @@ type SortField = "symbol" | "currentPrice" | "volume" | "changePercent";
 type SortDirection = "asc" | "desc";
 
 export function Dashboard() {
+  const [stocks, setStocks] = useState<Stock[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [sortField, setSortField] = useState<SortField>("symbol");
   const [sortDirection, setSortDirection] = useState<SortDirection>("asc");
   const [priceFilter, setPriceFilter] = useState({ min: "", max: "" });
   const [showFilters, setShowFilters] = useState(false);
 
+  useEffect(() => {
+    const fetchStocks = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+
+        const token = localStorage.getItem("token");
+        const headers: HeadersInit = {
+          "Content-Type": "application/json",
+        };
+
+        if (token) {
+          headers["Authorization"] = `Bearer ${token}`;
+        }
+
+        const response = await fetch("/api/stocks", {
+          method: "GET",
+          headers,
+        });
+
+        if (!response.ok) {
+          throw new Error(`API error: ${response.statusText}`);
+        }
+
+        const data = await response.json();
+
+        // Fallback to mock data if API returns empty array
+        if (Array.isArray(data) && data.length === 0) {
+          console.warn("API returned empty data, using mock data");
+          setStocks(WIG20_STOCKS);
+        } else {
+          setStocks(data);
+        }
+      } catch (err) {
+        console.warn("Failed to fetch from API, using mock data:", err);
+        // Fallback to mock data on any error
+        setStocks(WIG20_STOCKS);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchStocks();
+  }, []);
+
   const filteredAndSortedStocks = useMemo(() => {
-    let filtered = WIG20_STOCKS.filter((stock) => {
+    let filtered = stocks.filter((stock) => {
       const matchesSearch =
         stock.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
         stock.symbol.toLowerCase().includes(searchTerm.toLowerCase());
@@ -45,7 +94,7 @@ export function Dashboard() {
     });
 
     return filtered;
-  }, [searchTerm, sortField, sortDirection, priceFilter]);
+  }, [stocks, searchTerm, sortField, sortDirection, priceFilter]);
 
   const handleSort = (field: SortField) => {
     if (sortField === field) {
@@ -80,7 +129,34 @@ export function Dashboard() {
         </div>
       </div>
 
-      <div className="bg-gray-900 rounded-lg p-6 border border-gray-800">
+      {error && (
+        <div className="bg-red-500/10 border border-red-500/30 rounded-lg p-4 text-red-400">
+          <p className="font-medium">Błąd pobierania danych</p>
+          <p className="text-sm mt-1">{error}</p>
+        </div>
+      )}
+
+      {loading ? (
+        <div className="bg-gray-900 rounded-lg p-6 border border-gray-800">
+          <div className="flex justify-center items-center h-64">
+            <div className="text-gray-400">
+              <div className="animate-spin rounded-full h-8 w-8 border border-emerald-500 border-t-transparent mb-4"></div>
+              <p>Ładowanie spółek...</p>
+            </div>
+          </div>
+        </div>
+      ) : stocks.length === 0 ? (
+        <div className="bg-gray-900 rounded-lg p-6 border border-gray-800">
+          <div className="flex justify-center items-center h-64">
+            <div className="text-gray-400 text-center">
+              <p className="mb-2">Brak danych spółek</p>
+              <p className="text-sm">Spróbuj odświeżyć stronę</p>
+            </div>
+          </div>
+        </div>
+      ) : (
+        <>
+          <div className="bg-gray-900 rounded-lg p-6 border border-gray-800">
         <div className="flex flex-col md:flex-row gap-4 mb-4">
           <div className="flex-1 relative">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-500" />
@@ -257,7 +333,9 @@ export function Dashboard() {
             </tbody>
           </table>
         </div>
-      </div>
+          </div>
+        </>
+      )}
     </div>
   );
 }

@@ -20,6 +20,17 @@ builder.Services.AddScoped<ITokenService, TokenService>();
 builder.Services.AddScoped<IStockService, StockService>();
 builder.Services.AddScoped<IWalletService, WalletService>();
 
+// Register Wig20DataService as both background service and singleton
+// IMPORTANT: AddHttpClient MUST be before registering Wig20DataService
+builder.Services.AddHttpClient<Wig20DataService>()
+    .ConfigureHttpClient(client =>
+    {
+        client.Timeout = TimeSpan.FromSeconds(30);
+    });
+builder.Services.AddSingleton<Wig20DataService>();
+builder.Services.AddSingleton<IWig20DataService>(sp => sp.GetRequiredService<Wig20DataService>());
+builder.Services.AddSingleton<IHostedService>(sp => sp.GetRequiredService<Wig20DataService>());
+
 // Configure JWT Authentication
 var jwtSecret = builder.Configuration["Jwt:Secret"];
 if (string.IsNullOrEmpty(jwtSecret))
@@ -59,7 +70,12 @@ builder.Services.AddCors(options =>
     });
 });
 
-builder.Services.AddControllers();
+builder.Services.AddControllers()
+    .AddJsonOptions(options =>
+    {
+        options.JsonSerializerOptions.PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase; 
+        options.JsonSerializerOptions.PropertyNameCaseInsensitive = true;
+    });
 // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
 builder.Services.AddOpenApi();
 
@@ -69,7 +85,7 @@ var app = builder.Build();
 using (var scope = app.Services.CreateScope())
 {
     var dbContext = scope.ServiceProvider.GetRequiredService<WinWigDbContext>();
-    dbContext.Database.EnsureCreated();
+    await WinWigApp.Server.Data.DbInitializer.InitializeAsync(dbContext);
 }
 
 app.UseDefaultFiles();

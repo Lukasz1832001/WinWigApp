@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect } from "react";
 import { useParams, useNavigate, Link } from "react-router";
-import { Stock } from "../../data/mockData";
+import { Stock, WIG20_STOCKS } from "../../data/mockData";
 import { authFetch } from "../../utils/authHelper";
 import {
   ArrowLeft,
@@ -44,13 +44,23 @@ export function StockDetails() {
       try {
         const res = await fetch('/api/stocks');
         if (!res.ok) throw new Error('Nie udało się pobrać danych spółek');
-        const data: Stock[] = await res.json();
+        let data: Stock[] = await res.json();
+
+        // Fallback to mock data if API returns empty array
+        if (Array.isArray(data) && data.length === 0) {
+          console.warn("API returned empty data, using mock data");
+          data = WIG20_STOCKS;
+        }
+
         if (!mounted) return;
         const found = data.find((s) => s.symbol === symbol);
         setStock(found ?? null);
       } catch (err) {
-        console.error(err);
-        setError(err instanceof Error ? err.message : String(err));
+        console.warn("Error fetching stocks, using mock data:", err);
+        // Fallback to mock data on any error
+        if (!mounted) return;
+        const found = WIG20_STOCKS.find((s) => s.symbol === symbol);
+        setStock(found ?? null);
       }
     };
 

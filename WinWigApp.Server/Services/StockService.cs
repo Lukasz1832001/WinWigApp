@@ -1,3 +1,5 @@
+using Microsoft.EntityFrameworkCore;
+using WinWigApp.Server.Data;
 using WinWigApp.Server.DTOs;
 
 namespace WinWigApp.Server.Services;
@@ -11,87 +13,162 @@ public interface IStockService
 
 public class StockService : IStockService
 {
+    private readonly WinWigDbContext _context;
+    private readonly ILogger<StockService> _logger;
+
     private static readonly List<StockResponse> WIG20_STOCKS = new()
     {
         new() { Symbol = "PKO", Name = "PKO Bank Polski", CurrentPrice = 48.25m, Volume = 2150000, OpenPrice = 47.80m, ClosePrice = 48.10m, PeRatio = 8.5m, PbRatio = 1.2m, Roe = 12.3m, Change = 0.45m, ChangePercent = 0.94m },
-        new() { Symbol = "PZU", Name = "PZU", CurrentPrice = 42.15m, Volume = 1850000, OpenPrice = 42.50m, ClosePrice = 42.00m, PeRatio = 7.8m, PbRatio = 1.1m, Roe = 11.5m, Change = -0.35m, ChangePercent = -0.82m },
-        new() { Symbol = "PGE", Name = "PGE Polska Grupa Energetyczna", CurrentPrice = 8.92m, Volume = 3200000, OpenPrice = 8.75m, ClosePrice = 8.88m, PeRatio = 15.2m, PbRatio = 0.8m, Roe = 5.2m, Change = 0.17m, ChangePercent = 1.94m },
-        new() { Symbol = "KGHM", Name = "KGHM Polska MiedŸ", CurrentPrice = 125.40m, Volume = 980000, OpenPrice = 123.50m, ClosePrice = 124.80m, PeRatio = 12.4m, PbRatio = 1.5m, Roe = 9.8m, Change = 1.90m, ChangePercent = 1.54m },
-        new() { Symbol = "PKNORLEN", Name = "PKN Orlen", CurrentPrice = 54.30m, Volume = 1650000, OpenPrice = 54.80m, ClosePrice = 54.00m, PeRatio = 6.9m, PbRatio = 0.9m, Roe = 13.1m, Change = -0.50m, ChangePercent = -0.91m },
-        new() { Symbol = "ALIOR", Name = "Alior Bank", CurrentPrice = 78.50m, Volume = 720000, OpenPrice = 77.20m, ClosePrice = 78.00m, PeRatio = 9.2m, PbRatio = 1.3m, Roe = 10.5m, Change = 1.30m, ChangePercent = 1.68m },
-        new() { Symbol = "CCC", Name = "CCC", CurrentPrice = 95.80m, Volume = 540000, OpenPrice = 94.50m, ClosePrice = 95.20m, PeRatio = 18.5m, PbRatio = 2.1m, Roe = 8.7m, Change = 1.30m, ChangePercent = 1.37m },
-        new() { Symbol = "CDPROJEKT", Name = "CD Projekt", CurrentPrice = 185.20m, Volume = 1250000, OpenPrice = 182.50m, ClosePrice = 184.00m, PeRatio = 22.3m, PbRatio = 3.2m, Roe = 15.4m, Change = 3.70m, ChangePercent = 2.04m },
-        new() { Symbol = "CYFRPLSAT", Name = "Cyfrowy Polsat", CurrentPrice = 12.45m, Volume = 1850000, OpenPrice = 12.30m, ClosePrice = 12.38m, PeRatio = 11.8m, PbRatio = 1.6m, Roe = 9.2m, Change = 0.15m, ChangePercent = 1.22m },
-        new() { Symbol = "DINOPL", Name = "Dino Polska", CurrentPrice = 385.00m, Volume = 420000, OpenPrice = 380.50m, ClosePrice = 383.20m, PeRatio = 28.5m, PbRatio = 5.8m, Roe = 22.5m, Change = 4.50m, ChangePercent = 1.18m },
-        new() { Symbol = "JSW", Name = "Jastrzêbska Spó³ka Wêglowa", CurrentPrice = 28.75m, Volume = 1120000, OpenPrice = 28.20m, ClosePrice = 28.50m, PeRatio = 5.2m, PbRatio = 0.7m, Roe = 14.8m, Change = 0.55m, ChangePercent = 1.95m },
-        new() { Symbol = "LPP", Name = "LPP", CurrentPrice = 14250.00m, Volume = 12000, OpenPrice = 14100.00m, ClosePrice = 14200.00m, PeRatio = 21.5m, PbRatio = 4.2m, Roe = 18.3m, Change = 150.00m, ChangePercent = 1.06m },
-        new() { Symbol = "LOTOS", Name = "Grupa Lotos", CurrentPrice = 68.40m, Volume = 890000, OpenPrice = 67.80m, ClosePrice = 68.10m, PeRatio = 8.7m, PbRatio = 1.1m, Roe = 11.2m, Change = 0.60m, ChangePercent = 0.88m },
-        new() { Symbol = "MBANK", Name = "mBank", CurrentPrice = 520.50m, Volume = 165000, OpenPrice = 515.00m, ClosePrice = 518.00m, PeRatio = 10.3m, PbRatio = 1.4m, Roe = 12.8m, Change = 5.50m, ChangePercent = 1.07m },
-        new() { Symbol = "ORANGEPL", Name = "Orange Polska", CurrentPrice = 7.85m, Volume = 2850000, OpenPrice = 7.75m, ClosePrice = 7.80m, PeRatio = 13.2m, PbRatio = 1.0m, Roe = 7.5m, Change = 0.10m, ChangePercent = 1.29m },
-        new() { Symbol = "PEKAO", Name = "Bank Pekao", CurrentPrice = 165.80m, Volume = 580000, OpenPrice = 164.20m, ClosePrice = 165.00m, PeRatio = 9.8m, PbRatio = 1.5m, Roe = 13.5m, Change = 1.60m, ChangePercent = 0.97m },
-        new() { Symbol = "PGN", Name = "Polskie Górnictwo Naftowe i Gazownictwo", CurrentPrice = 5.62m, Volume = 4200000, OpenPrice = 5.55m, ClosePrice = 5.58m, PeRatio = 14.5m, PbRatio = 0.9m, Roe = 6.2m, Change = 0.07m, ChangePercent = 1.26m },
-        new() { Symbol = "SANPL", Name = "Santander Bank Polska", CurrentPrice = 425.00m, Volume = 245000, OpenPrice = 420.50m, ClosePrice = 423.00m, PeRatio = 11.2m, PbRatio = 1.6m, Roe = 14.2m, Change = 4.50m, ChangePercent = 1.07m },
-        new() { Symbol = "TAURONPE", Name = "Tauron Polska Energia", CurrentPrice = 1.82m, Volume = 5800000, OpenPrice = 1.78m, ClosePrice = 1.80m, PeRatio = 8.5m, PbRatio = 0.5m, Roe = 4.8m, Change = 0.04m, ChangePercent = 2.25m },
-        new() { Symbol = "TPE", Name = "Tauron Polska Energia (TPE)", CurrentPrice = 3.45m, Volume = 3200000, OpenPrice = 3.38m, ClosePrice = 3.42m, PeRatio = 9.8m, PbRatio = 0.7m, Roe = 5.5m, Change = 0.07m, ChangePercent = 2.07m }
+        new() { Symbol = "PZU", Name = "PZU SA", CurrentPrice = 42.15m, Volume = 1850000, OpenPrice = 42.50m, ClosePrice = 42.00m, PeRatio = 7.8m, PbRatio = 1.1m, Roe = 11.5m, Change = -0.35m, ChangePercent = -0.82m },
+        new() { Symbol = "PGE", Name = "PGE", CurrentPrice = 8.92m, Volume = 3200000, OpenPrice = 8.75m, ClosePrice = 8.88m, PeRatio = 15.2m, PbRatio = 0.8m, Roe = 5.2m, Change = 0.17m, ChangePercent = 1.94m },
+        new() { Symbol = "KGH", Name = "KGHM Polska MiedŸ", CurrentPrice = 125.40m, Volume = 980000, OpenPrice = 123.50m, ClosePrice = 124.80m, PeRatio = 12.4m, PbRatio = 1.5m, Roe = 9.8m, Change = 1.90m, ChangePercent = 1.54m },
+        new() { Symbol = "PKN", Name = "ORLEN", CurrentPrice = 54.30m, Volume = 1650000, OpenPrice = 54.80m, ClosePrice = 54.00m, PeRatio = 6.9m, PbRatio = 0.9m, Roe = 13.1m, Change = -0.50m, ChangePercent = -0.91m },
+        new() { Symbol = "ALR", Name = "Alior Bank", CurrentPrice = 78.50m, Volume = 720000, OpenPrice = 77.20m, ClosePrice = 78.00m, PeRatio = 9.2m, PbRatio = 1.3m, Roe = 10.5m, Change = 1.30m, ChangePercent = 1.68m },
+        new() { Symbol = "BDX", Name = "Budimex", CurrentPrice = 95.80m, Volume = 540000, OpenPrice = 94.50m, ClosePrice = 95.20m, PeRatio = 18.5m, PbRatio = 2.1m, Roe = 8.7m, Change = 1.30m, ChangePercent = 1.37m },
+        new() { Symbol = "CDR", Name = "CD Projekt", CurrentPrice = 185.20m, Volume = 1250000, OpenPrice = 182.50m, ClosePrice = 184.00m, PeRatio = 22.3m, PbRatio = 3.2m, Roe = 15.4m, Change = 3.70m, ChangePercent = 2.04m },
+        new() { Symbol = "DNP", Name = "Dino Polska", CurrentPrice = 385.00m, Volume = 420000, OpenPrice = 380.50m, ClosePrice = 383.20m, PeRatio = 28.5m, PbRatio = 5.8m, Roe = 22.5m, Change = 4.50m, ChangePercent = 1.18m },
+        new() { Symbol = "KRU", Name = "Kruk", CurrentPrice = 68.40m, Volume = 890000, OpenPrice = 67.80m, ClosePrice = 68.10m, PeRatio = 8.7m, PbRatio = 1.1m, Roe = 11.2m, Change = 0.60m, ChangePercent = 0.88m },
+        new() { Symbol = "MBK", Name = "mBank", CurrentPrice = 520.50m, Volume = 165000, OpenPrice = 515.00m, ClosePrice = 518.00m, PeRatio = 10.3m, PbRatio = 1.4m, Roe = 12.8m, Change = 5.50m, ChangePercent = 1.07m },
+        new() { Symbol = "PEO", Name = "Bank Pekao", CurrentPrice = 165.80m, Volume = 580000, OpenPrice = 164.20m, ClosePrice = 165.00m, PeRatio = 9.8m, PbRatio = 1.5m, Roe = 13.5m, Change = 1.60m, ChangePercent = 0.97m },
+        new() { Symbol = "TPE", Name = "Tauron Polska Energia", CurrentPrice = 1.82m, Volume = 5800000, OpenPrice = 1.78m, ClosePrice = 1.80m, PeRatio = 8.5m, PbRatio = 0.5m, Roe = 4.8m, Change = 0.04m, ChangePercent = 2.25m }
     };
 
-    public Task<List<StockResponse>> GetStocksAsync()
+    public StockService(WinWigDbContext context, ILogger<StockService> logger)
     {
-        return Task.FromResult(WIG20_STOCKS);
+        _context = context;
+        _logger = logger;
     }
 
-    public Task<List<CandlestickData>> GetCandlestickDataAsync(string symbol, int days)
+    public async Task<List<StockResponse>> GetStocksAsync()
     {
-        var stock = WIG20_STOCKS.FirstOrDefault(s => s.Symbol == symbol);
-        if (stock == null)
-            return Task.FromResult(new List<CandlestickData>());
-
-        var candleData = GenerateCandlestickData(stock.CurrentPrice, days);
-        return Task.FromResult(candleData);
-    }
-
-    public Task<TechnicalIndicatorsResponse> GetTechnicalIndicatorsAsync(string symbol, int days)
-    {
-        var stock = WIG20_STOCKS.FirstOrDefault(s => s.Symbol == symbol);
-        if (stock == null)
-            return Task.FromResult(new TechnicalIndicatorsResponse());
-
-        var candleData = GenerateCandlestickData(stock.CurrentPrice, days);
-        var indicators = CalculateTechnicalIndicators(candleData);
-        
-        return Task.FromResult(indicators);
-    }
-
-    private static List<CandlestickData> GenerateCandlestickData(decimal basePrice, int days)
-    {
-        var data = new List<CandlestickData>();
-        decimal price = basePrice * 0.9m;
-        var random = new Random();
-
-        for (int i = 0; i < days; i++)
+        try
         {
-            var open = price;
-            const decimal volatility = 0.03m;
-            var change = (decimal)(random.NextDouble() - 0.48) * price * volatility;
-            var close = open + change;
-            var high = Math.Max(open, close) * (1 + (decimal)random.NextDouble() * 0.02m);
-            var low = Math.Min(open, close) * (1 - (decimal)random.NextDouble() * 0.02m);
-            var volume = (long)(random.NextDouble() * 2000000) + 500000;
+            _logger.LogInformation("GetStocksAsync: Starting to fetch latest stock prices from database");
 
-            data.Add(new CandlestickData
+            // Pobieranie najnowszych cen per symbol — GroupBy z OrderByDescending w ramach grupy
+            var latestPrices = await _context.StockPrices
+                .GroupBy(sp => sp.StockSymbol)
+                .Select(g => g.OrderByDescending(sp => sp.Date).First())
+                .ToListAsync();
+
+            _logger.LogInformation("GetStocksAsync: Found {Count} stock price records in database", latestPrices.Count);
+
+            if (!latestPrices.Any())
             {
-                Timestamp = new DateTimeOffset(DateTime.UtcNow.AddDays(-(days - i))).ToUnixTimeMilliseconds(),
-                Open = open,
-                High = high,
-                Low = low,
-                Close = close,
-                Volume = volume
-            });
+                _logger.LogWarning("GetStocksAsync: Database is empty (no StockPrice records found). Returning mock data as fallback.");
+                return WIG20_STOCKS;
+            }
 
-            price = close;
+            var stocks = await _context.Stocks.ToListAsync();
+            _logger.LogInformation("GetStocksAsync: Found {Count} stock definitions in database", stocks.Count);
+
+            var stockMap = stocks.ToDictionary(s => s.Symbol, s => s);
+
+            var result = latestPrices.Select(sp =>
+            {
+                var hasMeta = stockMap.TryGetValue(sp.StockSymbol, out var meta);
+                decimal change = sp.Close - sp.Open;
+                decimal changePercent = sp.Open != 0 ? (change / sp.Open) * 100m : 0m;
+
+                return new StockResponse
+                {
+                    Symbol = sp.StockSymbol,
+                    CurrentPrice = sp.Close,
+                    OpenPrice = sp.Open,
+                    ClosePrice = sp.Close,
+                    Volume = sp.Volume,
+                    Name = hasMeta ? meta!.Name : sp.StockSymbol,
+                    Change = Math.Round(change, 2),
+                    ChangePercent = Math.Round(changePercent, 2),
+                    // Pobieranie wartoœci zapisanych przez zaktualizowany Wig20DataService
+                    PeRatio = hasMeta ? meta!.PeRatio : (sp.PeRatio ?? 0m),
+                    PbRatio = hasMeta ? meta!.PbRatio : (sp.PbRatio ?? 0m),
+                    Roe = hasMeta ? meta!.Roe : (sp.Roe ?? 0m)
+                };
+            }).ToList();
+
+            _logger.LogInformation("GetStocksAsync: Successfully returning {Count} stocks with current data", result.Count);
+            return result;
         }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "GetStocksAsync: Error fetching data from database. Returning mock data as fallback.");
+            return WIG20_STOCKS;
+        }
+    }
 
-        return data;
+    public async Task<List<CandlestickData>> GetCandlestickDataAsync(string symbol, int days)
+    {
+        try
+        {
+            var cutoffDate = DateTime.UtcNow.Date.AddDays(-days);
+
+            var stockPrices = await _context.StockPrices
+                .Where(sp => sp.StockSymbol == symbol && sp.Date >= cutoffDate)
+                .OrderBy(sp => sp.Date)
+                .ToListAsync();
+
+            if (!stockPrices.Any()) return new List<CandlestickData>();
+
+            return stockPrices.Select(sp => new CandlestickData
+            {
+                Timestamp = new DateTimeOffset(sp.Date).ToUnixTimeMilliseconds(),
+                Open = sp.Open,
+                High = sp.High,
+                Low = sp.Low,
+                Close = sp.Close,
+                Volume = sp.Volume
+            }).ToList();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error retrieving candlestick data for {Symbol}", symbol);
+            return new List<CandlestickData>();
+        }
+    }
+
+    public async Task<TechnicalIndicatorsResponse> GetTechnicalIndicatorsAsync(string symbol, int days)
+    {
+        try
+        {
+            int totalDaysToFetch = days + 260;
+            var cutoffDate = DateTime.UtcNow.Date.AddDays(-totalDaysToFetch);
+
+            var stockPrices = await _context.StockPrices
+                .Where(sp => sp.StockSymbol == symbol && sp.Date >= cutoffDate)
+                .OrderBy(sp => sp.Date)
+                .ToListAsync();
+
+            if (!stockPrices.Any())
+                return new TechnicalIndicatorsResponse();
+
+            var candleData = stockPrices.Select(sp => new CandlestickData
+            {
+                Timestamp = new DateTimeOffset(sp.Date).ToUnixTimeMilliseconds(),
+                Open = sp.Open,
+                High = sp.High,
+                Low = sp.Low,
+                Close = sp.Close,
+                Volume = sp.Volume
+            }).ToList();
+
+            var fullIndicators = CalculateTechnicalIndicators(candleData);
+            int itemsToTake = Math.Min(days, candleData.Count);
+            int startIndex = Math.Max(0, fullIndicators.Rsi.Length - itemsToTake);
+
+            return new TechnicalIndicatorsResponse
+            {
+                Rsi = fullIndicators.Rsi.Skip(startIndex).Select(v => Math.Round(v, 2)).ToArray(),
+                Macd = fullIndicators.Macd.Skip(startIndex).ToArray(),
+                Sma50 = fullIndicators.Sma50.Skip(startIndex).Select(v => Math.Round(v, 2)).ToArray(),
+                Sma200 = fullIndicators.Sma200.Skip(startIndex).Select(v => Math.Round(v, 2)).ToArray()
+            };
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error calculating technical indicators for {Symbol}", symbol);
+            return new TechnicalIndicatorsResponse();
+        }
     }
 
     private static TechnicalIndicatorsResponse CalculateTechnicalIndicators(List<CandlestickData> candleData)
@@ -115,12 +192,11 @@ public class StockService : IStockService
     private static List<decimal> CalculateRSI(List<decimal> closes)
     {
         var rsi = new List<decimal>();
-
         for (int i = 0; i < closes.Count; i++)
         {
             if (i < 14)
             {
-                rsi.Add(50);
+                rsi.Add(50m);
                 continue;
             }
 
@@ -136,21 +212,14 @@ public class StockService : IStockService
                     losses.Add(Math.Abs(change));
             }
 
-            var avgGain = gains.Count > 0 ? gains.Sum() / 14 : 0;
-            var avgLoss = losses.Count > 0 ? losses.Sum() / 14 : 0;
+            var avgGain = gains.Count > 0 ? gains.Sum() / 14m : 0m;
+            var avgLoss = losses.Count > 0 ? losses.Sum() / 14m : 0m;
 
             if (avgLoss == 0)
-            {
-                rsi.Add(100);
-            }
+                rsi.Add(100m);
             else
-            {
-                var rs = avgGain / avgLoss;
-                var rsiValue = 100 - (100 / (1 + rs));
-                rsi.Add(rsiValue);
-            }
+                rsi.Add(100m - (100m / (1m + (avgGain / avgLoss))));
         }
-
         return rsi;
     }
 
@@ -166,19 +235,17 @@ public class StockService : IStockService
         {
             macd.Add(new MacdIndicator
             {
-                Value = macdLine[i],
-                Signal = signal[i],
-                Histogram = macdLine[i] - signal[i]
+                Value = Math.Round(macdLine[i], 4),
+                Signal = Math.Round(signal[i], 4),
+                Histogram = Math.Round(macdLine[i] - signal[i], 4)
             });
         }
-
         return macd;
     }
 
     private static List<decimal> CalculateSMA(List<decimal> closes, int period)
     {
         var sma = new List<decimal>();
-
         for (int i = 0; i < closes.Count; i++)
         {
             if (i < period - 1)
@@ -191,21 +258,21 @@ public class StockService : IStockService
                 sma.Add(sum / period);
             }
         }
-
         return sma;
     }
 
     private static List<decimal> CalculateEMA(List<decimal> data, int period)
     {
+        if (!data.Any()) return new List<decimal>();
+
         var k = 2m / (period + 1);
         var ema = new List<decimal> { data[0] };
 
         for (int i = 1; i < data.Count; i++)
         {
-            var value = data[i] * k + ema[i - 1] * (1 - k);
+            var value = data[i] * k + ema[i - 1] * (1m - k);
             ema.Add(value);
         }
-
         return ema;
     }
 }

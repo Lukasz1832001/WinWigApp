@@ -11,6 +11,7 @@ public class WinWigDbContext : DbContext
 
     public DbSet<User> Users { get; set; }
     public DbSet<Stock> Stocks { get; set; }
+    public DbSet<StockPrice> StockPrices { get; set; }
     public DbSet<Transaction> Transactions { get; set; }
     public DbSet<Portfolio> Portfolios { get; set; }
     public DbSet<Deposit> Deposits { get; set; }
@@ -36,6 +37,24 @@ public class WinWigDbContext : DbContext
         modelBuilder.Entity<Stock>()
             .Property(s => s.Symbol)
             .HasMaxLength(10);
+
+        // StockPrice configuration
+        modelBuilder.Entity<StockPrice>()
+            .HasKey(sp => sp.Id);
+        modelBuilder.Entity<StockPrice>()
+            .Property(sp => sp.StockSymbol)
+            .IsRequired()
+            .HasMaxLength(10);
+        modelBuilder.Entity<StockPrice>()
+            .HasIndex(sp => new { sp.StockSymbol, sp.Date })
+            .IsUnique()
+            .HasDatabaseName("IX_StockPrice_Symbol_Date");
+        modelBuilder.Entity<StockPrice>()
+            .HasOne(sp => sp.Stock)
+            .WithMany()
+            .HasForeignKey(sp => sp.StockSymbol)
+            .HasPrincipalKey(s => s.Symbol)
+            .OnDelete(DeleteBehavior.Restrict);
 
         // Transaction configuration
         modelBuilder.Entity<Transaction>()

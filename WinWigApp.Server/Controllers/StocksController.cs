@@ -9,11 +9,16 @@ namespace WinWigApp.Server.Controllers;
 public class StocksController : ControllerBase
 {
     private readonly IStockService _stockService;
+    private readonly IWig20DataService _dataService;
     private readonly ILogger<StocksController> _logger;
 
-    public StocksController(IStockService stockService, ILogger<StocksController> logger)
+    public StocksController(
+        IStockService stockService,
+        IWig20DataService dataService,
+        ILogger<StocksController> logger)
     {
         _stockService = stockService;
+        _dataService = dataService;
         _logger = logger;
     }
 
@@ -94,6 +99,27 @@ public class StocksController : ControllerBase
             _logger.LogError(ex, "Error retrieving technical indicators for {Symbol}", symbol);
             return StatusCode(StatusCodes.Status500InternalServerError,
                 new { message = "B³¹d pobierania wskaŸników technicznych" });
+        }
+    }
+
+    /// <summary>
+    /// Rêcznie pobiera aktualne dane WIG20 z API stooq.pl
+    /// Endpoint dostêpny dla administratorów - do testowania
+    /// </summary>
+    [HttpPost("refresh-data")]
+    public async Task<ActionResult<object>> RefreshWig20Data()
+    {
+        try
+        {
+            _logger.LogInformation("Manual WIG20 data refresh initiated");
+            await _dataService.UpdateDailyDataAsync();
+            return Ok(new { message = "Dane WIG20 zosta³y pomyœlnie zaktualizowane" });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error refreshing WIG20 data");
+            return StatusCode(StatusCodes.Status500InternalServerError,
+                new { message = "B³¹d podczas aktualizacji danych WIG20" });
         }
     }
 }

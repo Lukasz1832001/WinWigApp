@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
+import React from "react";
 import { Link } from "react-router";
-import { WIG20_STOCKS } from "../../data/mockData";
+import { Stock, WIG20_STOCKS } from "../../data/mockData";
 import {
   Briefcase,
   TrendingUp,
@@ -21,12 +22,53 @@ interface PortfolioPosition {
 
 export function Portfolio() {
   const [portfolio, setPortfolio] = useState<PortfolioPosition[]>([]);
+  const [stocks, setStocks] = useState<Stock[]>([]);
   const [editingStopLoss, setEditingStopLoss] = useState<string | null>(null);
   const [newStopLoss, setNewStopLoss] = useState<string>("");
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     loadPortfolio();
+    fetchStocks();
   }, []);
+
+  const fetchStocks = async () => {
+    try {
+      const token = localStorage.getItem("token");
+      const headers: HeadersInit = {
+        "Content-Type": "application/json",
+      };
+
+      if (token) {
+        headers["Authorization"] = `Bearer ${token}`;
+      }
+
+      const response = await fetch("/api/stocks", {
+        method: "GET",
+        headers,
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+
+        // Fallback to mock data if API returns empty array
+        if (Array.isArray(data) && data.length === 0) {
+          console.warn("API returned empty data, using mock data");
+          setStocks(WIG20_STOCKS);
+        } else {
+          setStocks(data);
+        }
+      } else {
+        throw new Error("Failed to fetch stocks");
+      }
+    } catch (err) {
+      console.warn("Error fetching stocks, using mock data:", err);
+      // Fallback to mock data on any error
+      setStocks(WIG20_STOCKS);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const loadPortfolio = () => {
     const data = JSON.parse(localStorage.getItem("portfolio") || "[]");
@@ -34,13 +76,13 @@ export function Portfolio() {
   };
 
   const calculatePositionValue = (position: PortfolioPosition) => {
-    const stock = WIG20_STOCKS.find((s) => s.symbol === position.symbol);
+    const stock = stocks.find((s) => s.symbol === position.symbol);
     if (!stock) return 0;
     return stock.currentPrice * position.quantity;
   };
 
   const calculatePositionProfit = (position: PortfolioPosition) => {
-    const stock = WIG20_STOCKS.find((s) => s.symbol === position.symbol);
+    const stock = stocks.find((s) => s.symbol === position.symbol);
     if (!stock) return { value: 0, percent: 0 };
     const currentValue = stock.currentPrice * position.quantity;
     const investedValue = position.avgPrice * position.quantity;
